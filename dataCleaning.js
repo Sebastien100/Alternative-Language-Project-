@@ -3,221 +3,185 @@ const readline = require('readline');
 
 class Cell {
     constructor() {
-        this.oem = '';
-        this.model = '';
+        this.oem = null;
+        this.model = null;
         this.launchAnnounced = null;
-        this.launchStatus = '';
-        this.bodyDimensions = '';
+        this.launchStatus = null;
+        this.bodyDimensions = null;
         this.bodyWeight = null;
-        this.bodySim = '';
-        this.displayType = '';
+        this.bodySim = null;
+        this.displayType = null;
         this.displaySize = null;
-        this.displayResolution = '';
-        this.featuresSensors = '';
-        this.platformOS = '';
+        this.displayResolution = null;
+        this.featuresSensors = null;
+        this.platformOS = null;
     }
 
     setOEM(OEM) {
-        this.oem = OEM;
+        this.oem = cleanString(OEM);
     }
 
     setModel(model) {
-        this.model = model;
+        this.model = cleanString(model);
     }
 
     setLaunchAnnounced(launchAnnounced) {
-        this.launchAnnounced = launchAnnounced;
+        this.launchAnnounced = cleanLaunchAnnounced(launchAnnounced);
     }
 
     setLaunchStatus(launchStatus) {
-        this.launchStatus = launchStatus;
+        this.launchStatus = cleanLaunchStatus(launchStatus);
     }
 
     setBodyDimensions(bodyDimensions) {
-        this.bodyDimensions = bodyDimensions;
+        this.bodyDimensions = cleanString(bodyDimensions);
     }
 
     setBodyWeight(bodyWeight) {
-        this.bodyWeight = bodyWeight;
+        this.bodyWeight = cleanBodyWeight(bodyWeight);
     }
 
     setBodySim(bodySim) {
-        this.bodySim = bodySim;
+        this.bodySim = cleanBodySim(bodySim);
     }
 
     setDisplayType(displayType) {
-        this.displayType = displayType;
+        this.displayType = cleanString(displayType);
     }
 
     setDisplaySize(displaySize) {
-        this.displaySize = displaySize;
+        this.displaySize = cleanDisplaySize(displaySize);
     }
 
     setDisplayResolution(displayResolution) {
-        this.displayResolution = displayResolution;
+        this.displayResolution = cleanString(displayResolution);
     }
 
     setFeaturesSensors(featuresSensors) {
-        this.featuresSensors = featuresSensors;
+        this.featuresSensors = cleanString(featuresSensors);
     }
 
     setPlatformOS(platformOS) {
-        this.platformOS = platformOS;
+        this.platformOS = cleanPlatformOS(platformOS);
+    }
+
+    // Convert object details to a string for printing
+    toString() {
+        return `Cell: OEM - ${this.oem}, Model - ${this.model}, Launch Announced - ${this.launchAnnounced}, Launch Status - ${this.launchStatus}, Body Dimensions - ${this.bodyDimensions}, Body Weight - ${this.bodyWeight}, Body SIM - ${this.bodySim}, Display Type - ${this.displayType}, Display Size - ${this.displaySize}, Display Resolution - ${this.displayResolution}, Features/Sensors - ${this.featuresSensors}, Platform OS - ${this.platformOS}`;
+    }
+
+    // Calculate statistics on numeric columns
+    calculateStatistics() {
+        const numericColumns = ['launchAnnounced', 'bodyWeight', 'displaySize'];
+        const stats = {};
+
+        numericColumns.forEach(column => {
+            const values = [];
+            for (const obj of cellList) {
+                if (obj[column] !== null && typeof obj[column] === 'number') {
+                    values.push(obj[column]);
+                }
+            }
+
+            if (values.length > 0) {
+                stats[column] = {
+                    mean: values.reduce((acc, curr) => acc + curr, 0) / values.length,
+                    median: calculateMedian(values),
+                    standardDeviation: calculateStandardDeviation(values)
+                };
+            }
+        });
+
+        return stats;
+    }
+
+    // List unique values for each column
+    listUniqueValues() {
+        const uniqueValues = {};
+
+        for (const property in this) {
+            if (this.hasOwnProperty(property) && this[property] !== null) {
+                const value = this[property];
+                if (!uniqueValues[property]) {
+                    uniqueValues[property] = new Set();
+                }
+                uniqueValues[property].add(value);
+            }
+        }
+
+        return uniqueValues;
+    }
+
+    // Add an object with data for each variable
+    static addObject(data) {
+        const cell = new Cell();
+        for (const key in data) {
+            if (cell.hasOwnProperty(key) && data[key] !== undefined) {
+                cell[key] = data[key];
+            }
+        }
+        cellList.push(cell);
+    }
+
+    // Delete an object by index
+    static deleteObject(index) {
+        if (index >= 0 && index < cellList.length) {
+            cellList.splice(index, 1);
+        }
     }
 }
 
-async function main() {
-    const csvFile = 'cells.csv';
-    const cellMap = new Map();
-    const launchAnnouncedList = [];
-
-    const fileStream = fs.createReadStream(csvFile);
-    const rl = readline.createInterface({
-        input: fileStream,
-        crlfDelay: Infinity
-    });
-
-    let id = 1;
-
-    rl.on('line', (line) => {
-        if (id === 1) {
-            id++;
-            return; // Skip the headers
-        }
-
-        const data = line.split(',(?=(?:[^"]*"[^"]*")*[^"]*$)', -1);
-
-        const cell = new Cell();
-        cell.setOEM(cleanStrings(data[0]));
-        cell.setModel(cleanStrings(data[1]));
-        launchAnnouncedList.push(data[2]);
-        cell.setLaunchAnnounced(cleanLaunchAnnounced(data[2]));
-        cell.setLaunchStatus(cleanLaunchStatus(data[3]));
-        cell.setBodyDimensions(cleanStrings(data[4]));
-        cell.setBodyWeight(cleanBodyWeight(data[5]));
-        cell.setBodySim(cleanBodySim(data[6]));
-        cell.setDisplayType(cleanStrings(data[7]));
-        cell.setDisplaySize(cleanDisplaySize(data[8]));
-        cell.setDisplayResolution(cleanStrings(data[9]));
-        cell.setFeaturesSensors(cleanFeatureSensors(data[10]));
-        cell.setPlatformOS(cleanPlatformOS(data[11]));
-
-        cellMap.set(id++, cell);
-    });
-
-    rl.on('close', () => {
-        // After reading CSV file
-        displayUniqueData(cellMap);
-        // Other functionalities go here...
-    });
-}
-
-// Helper functions
-function clean(input) {
-    if (!input || input.trim().length === 0 || input === "-") {
+// Helper function to clean string values
+function cleanString(input) {
+    if (!input || input.trim() === "" || input.trim() === "-" || input.trim() === "No" || input.trim() === "Yes") {
         return null;
     }
     return input.trim();
 }
 
-function cleanPlatformOS(input) {
-    if (input === "-" || !input) {
-        return null;
-    }
-    
-    input = removeQuotes(input);
-
-    // Regular expression pattern to match everything up to the first comma or end of string
-    const pattern = /^(.*?)(?:,|$)/;
-    const match = input.match(pattern);
-    
-    if (match) {
-        return match[1].trim();
-    } else {
-        return input.trim();
-    }
-}
-
-function removeQuotes(str) {
-    return str.replace(/"/g, "");
-}
-
-function cleanStrings(input) {
-    input = removeQuotes(input);
-    if (!input || input === "-") {
-        return null;
-    }
-    return input;
-}
-
-function cleanFeatureSensors(input) {
-    input = removeQuotes(input);
-    if (!input || input === "-") {
-        return null;
-    }
-    if (/^\d+$/.test(input)) {
-        return null;
-    }
-    return input;
-}
-
+// Helper function to clean launch announced year
 function cleanLaunchAnnounced(input) {
-    input = removeQuotes(input);
-
-    if (input.length < 4 || !(/^\d+$/.test(input.substring(0, 4)))) {
-        return null;
-    }
-
-    return parseInt(input.substring(0, 4));
+    const match = input.match(/\b\d{4}\b/);
+    return match ? parseInt(match[0]) : null;
 }
 
+// Helper function to clean launch status
+function cleanLaunchStatus(input) {
+    if (input === "Discontinued" || input === "Cancelled") {
+        return input;
+    }
+    const match = input.match(/\b\d{4}\b/);
+    return match ? match[0] : null;
+}
+
+// Helper function to clean body weight and convert to float
 function cleanBodyWeight(input) {
     const match = input.match(/(\d+) g/);
-    if (match) {
-        return parseFloat(match[1]);
-    }
-    return null;
+    return match ? parseFloat(match[1]) : null;
 }
 
+// Helper function to clean display size and convert to float
 function cleanDisplaySize(input) {
-    const match = input.match(/(\d+) inches/);
-    if (match) {
-        return parseFloat(match[1]);
-    }
-    return null;
+    const match = input.match(/([\d.]+) inches/);
+    return match ? parseFloat(match[1]) : null;
 }
 
-function cleanLaunchStatus(str) {
-    str = removeQuotes(str);
-    const pattern = /\b\d{4}\b/;
-    if (str === "Discontinued" || str === "Cancelled") {
-        return str;
-    } else if (pattern.test(str)) {
-        return str.match(pattern)[0];
-    } else {
-        return null;
-    }
-}
-
-function isNumeric(input) {
-    return /^\d+$/.test(input);
-}
-
-function onlyNumbers(input) {
-    return /^\d+$/.test(input);
-}
-
+// Helper function to clean body SIM type
 function cleanBodySim(input) {
-    input = removeQuotes(input);
-    if (input === "Yes" || input === "No") {
+    return input === "No" || input === "Yes" ? null : input;
+}
+
+// Helper function to clean platform OS and extract the OS name
+function cleanPlatformOS(input) {
+    if (!input || input.trim() === "" || input.trim() === "-") {
         return null;
     }
-    return input;
+    input = removeExtraInfo(input);
+    return input.trim();
 }
 
-function displayUniqueData(cellMap) {
-    // Your code to display unique data goes here
+// Helper function to clean display size and convert to float
+function cleanDisplaySize(input) {
+    const match = input.match(/([\d.]+) inches/);
+    return match ? parseFloat(match[1]) : null;
 }
-
-// Call the main function to start the process
-main().catch(err => console.error(err));
