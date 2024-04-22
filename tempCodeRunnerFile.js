@@ -26,16 +26,10 @@ class Cell {
     }
 
     setLaunchAnnounced(launchAnnounced) {
-        if (typeof launchAnnounced !== 'string') {
-            throw new Error('Launch announced must be a valid string.');
-        }
         this.launchAnnounced = cleanLaunchAnnounced(launchAnnounced);
     }
 
     setLaunchStatus(launchStatus) {
-        if (typeof launchStatus !== 'string') {
-            throw new Error('Launch status must be a valid string.');
-        }
         this.launchStatus = cleanLaunchStatus(launchStatus);
     }
 
@@ -44,9 +38,6 @@ class Cell {
     }
 
     setBodyWeight(bodyWeight) {
-        if (typeof bodyWeight !== 'string') {
-            throw new Error('Body weight must be a valid string.');
-        }
         this.bodyWeight = cleanBodyWeight(bodyWeight);
     }
 
@@ -59,9 +50,6 @@ class Cell {
     }
 
     setDisplaySize(displaySize) {
-        if (typeof displaySize !== 'string') {
-            throw new Error('Display size must be a valid string.');
-        }
         this.displaySize = cleanDisplaySize(displaySize);
     }
 
@@ -145,7 +133,7 @@ class Cell {
 
 // Helper function to clean string values
 function cleanString(input) {
-    if (!input || typeof input !== 'string' || input.trim() === "" || input.trim() === "-" || input.trim() === "No" || input.trim() === "Yes") {
+    if (!input || input.trim() === "" || input.trim() === "-" || input.trim() === "No" || input.trim() === "Yes") {
         return null;
     }
     return input.trim();
@@ -153,17 +141,14 @@ function cleanString(input) {
 
 // Helper function to clean launch announced year
 function cleanLaunchAnnounced(input) {
-    if (!input) {
-        return null;
-    }
     const match = input.match(/\b\d{4}\b/);
     return match ? parseInt(match[0]) : null;
 }
 
 // Helper function to clean launch status
 function cleanLaunchStatus(input) {
-    if (!input) {
-        return null;
+    if (input === "Discontinued" || input === "Cancelled") {
+        return input;
     }
     const match = input.match(/\b\d{4}\b/);
     return match ? match[0] : null;
@@ -171,10 +156,13 @@ function cleanLaunchStatus(input) {
 
 // Helper function to clean body weight and convert to float
 function cleanBodyWeight(input) {
-    if (!input) {
-        return null;
-    }
     const match = input.match(/(\d+) g/);
+    return match ? parseFloat(match[1]) : null;
+}
+
+// Helper function to clean display size and convert to float
+function cleanDisplaySize(input) {
+    const match = input.match(/([\d.]+) inches/);
     return match ? parseFloat(match[1]) : null;
 }
 
@@ -185,23 +173,11 @@ function cleanBodySim(input) {
 
 // Helper function to clean platform OS and extract the OS name
 function cleanPlatformOS(input) {
-    if (!input || typeof input !== 'string' || input.trim() === "" || input.trim() === "-") {
+    if (!input || input.trim() === "" || input.trim() === "-") {
         return null;
     }
     input = removeExtraInfo(input);
     return input.trim();
-}
-
-// Helper function to clean display size and convert to float
-function cleanDisplaySize(input) {
-    if (!input || typeof input !== 'string') {
-        throw new Error('Invalid display size input.');
-    }
-    const match = input.match(/([\d.]+) inches/);
-    if (!match) {
-        throw new Error('Invalid display size format.');
-    }
-    return parseFloat(match[1]);
 }
 
 // Helper function to remove extra information (up to the first comma)
@@ -228,80 +204,72 @@ function calculateStandardDeviation(values) {
 const cellList = [];
 
 async function main() {
-    try {
-        const csvFile = 'cells.csv';
-        const fileStream = fs.createReadStream(csvFile);
-        const rl = readline.createInterface({
-            input: fileStream,
-            crlfDelay: Infinity
+    const csvFile = 'cells.csv';
+
+    const fileStream = fs.createReadStream(csvFile);
+    const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+
+    let id = 1;
+
+    rl.on('line', (line) => {
+        if (id === 1) {
+            id++;
+            return; // Skip the headers
+        }
+
+        const data = line.split(',(?=(?:[^"]*"[^"]*")*[^"]*$)', -1);
+
+        const cell = new Cell();
+        cell.setOEM(data[0]);
+        cell.setModel(data[1]);
+        cell.setLaunchAnnounced(data[2]);
+        cell.setLaunchStatus(data[3]);
+        cell.setBodyDimensions(data[4]);
+        cell.setBodyWeight(data[5]);
+        cell.setBodySim(data[6]);
+        cell.setDisplayType(data[7]);
+        cell.setDisplaySize(data[8]);
+        cell.setDisplayResolution(data[9]);
+        cell.setFeaturesSensors(data[10]);
+        cell.setPlatformOS(data[11]);
+
+        cellList.push(cell);
+    });
+
+    rl.on('close', () => {
+        // After reading CSV file
+        console.log(cellList);
+
+        // Example usage of Cell class methods
+        console.log(cellList[0].toString());
+        console.log(cellList[0].calculateStatistics());
+        console.log(cellList[0].listUniqueValues());
+
+        // Add new object
+        Cell.addObject({
+            oem: 'Samsung',
+            model: 'Galaxy S20',
+            launchAnnounced: '2020',
+            launchStatus: 'Discontinued',
+            bodyDimensions: '151.7 x 69.1 x 7.9 mm',
+            bodyWeight: '163 g',
+            bodySim: 'Yes',
+            displayType: 'Dynamic AMOLED',
+            displaySize: '6.2 inches',
+            displayResolution: '1440 x 3200 pixels',
+            featuresSensors: 'Fingerprint (under display, ultrasonic), accelerometer, gyro, proximity, compass, barometer',
+            platformOS: 'Android 10, upgradable to Android 11'
         });
 
-        let id = 1;
+        console.log(cellList);
 
-        rl.on('line', (line) => {
-            try {
-                if (id === 1) {
-                    id++;
-                    return; // Skip the headers
-                }
-
-                const data = line.split(',(?=(?:[^"]*"[^"]*")*[^"]*$)', -1);
-                const cell = new Cell();
-
-                // Validate and set properties
-                cell.setOEM(data[0]);
-                cell.setModel(data[1]);
-                cell.setLaunchAnnounced(data[2]);
-                cell.setLaunchStatus(data[3]);
-                cell.setBodyDimensions(data[4]);
-                cell.setBodyWeight(data[5]);
-                cell.setBodySim(data[6]);
-                cell.setDisplayType(data[7]);
-                cell.setDisplaySize(data[8]);
-                cell.setDisplayResolution(data[9]);
-                cell.setFeaturesSensors(data[10]);
-                cell.setPlatformOS(data[11]);
-
-                cellList.push(cell);
-            } catch (err) {
-                console.error('Error processing line:', err.message);
-            }
-        });
-
-        rl.on('close', () => {
-            // Process completed successfully
-            console.log('CSV file processed successfully.');
-
-            // Example usage of Cell class methods
-            console.log(cellList[0].toString());
-            console.log(cellList[0].calculateStatistics());
-            console.log(cellList[0].listUniqueValues());
-
-            // Add new object
-            Cell.addObject({
-                oem: 'Samsung',
-                model: 'Galaxy S20',
-                launchAnnounced: '2020',
-                launchStatus: 'Discontinued',
-                bodyDimensions: '151.7 x 69.1 x 7.9 mm',
-                bodyWeight: '163 g',
-                bodySim: 'Yes',
-                displayType: 'Dynamic AMOLED',
-                displaySize: '6.2 inches',
-                displayResolution: '1440 x 3200 pixels',
-                featuresSensors: 'Fingerprint (under display, ultrasonic), accelerometer, gyro, proximity, compass, barometer',
-                platformOS: 'Android 10, upgradable to Android 11'
-            });
-
-            console.log(cellList);
-
-            // Delete an object
-            Cell.deleteObject(1);
-            console.log(cellList);
-        });
-    } catch (err) {
-        console.error('An error occurred during file processing:', err.message);
-    }
+        // Delete an object
+        Cell.deleteObject(1);
+        console.log(cellList);
+    });
 }
 
 // Call the main function to start the process
