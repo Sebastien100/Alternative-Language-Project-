@@ -176,7 +176,7 @@ function cleanBodyWeight(input) {
     if (match) {
         return parseFloat(match[1]);
     }
-
+    return null;
 }
 
 function cleanDisplaySize(input) {
