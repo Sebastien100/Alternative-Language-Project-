@@ -131,146 +131,163 @@ class Cell {
     }
 }
 
-// Helper function to clean string values
+// Helper functions for data cleaning and processing
 function cleanString(input) {
-    if (!input || input.trim() === "" || input.trim() === "-" || input.trim() === "No" || input.trim() === "Yes") {
-        return null;
-    }
-    return input.trim();
+    return typeof input === 'string' ? input.trim() : null;
 }
 
-// Helper function to clean launch announced year
 function cleanLaunchAnnounced(input) {
-    const match = input.match(/\b\d{4}\b/);
-    return match ? parseInt(match[0]) : null;
-}
-
-// Helper function to clean launch status
-function cleanLaunchStatus(input) {
-    if (input === "Discontinued" || input === "Cancelled") {
-        return input;
-    }
-    const match = input.match(/\b\d{4}\b/);
-    return match ? match[0] : null;
-}
-
-// Helper function to clean body weight and convert to float
-function cleanBodyWeight(input) {
-    const match = input.match(/(\d+) g/);
-    return match ? parseFloat(match[1]) : null;
-}
-
-// Helper function to clean display size and convert to float
-function cleanDisplaySize(input) {
-    const match = input.match(/([\d.]+) inches/);
-    return match ? parseFloat(match[1]) : null;
-}
-
-// Helper function to clean body SIM type
-function cleanBodySim(input) {
-    return input === "No" || input === "Yes" ? null : input;
-}
-
-// Helper function to clean platform OS and extract the OS name
-function cleanPlatformOS(input) {
-    if (!input || input.trim() === "" || input.trim() === "-") {
+    if (!input || !/^\d{4}$/.test(input)) {
         return null;
     }
-    input = removeExtraInfo(input);
-    return input.trim();
+    return parseInt(input, 10);
 }
 
-// Helper function to remove extra information (up to the first comma)
-function removeExtraInfo(input) {
-    const match = input.match(/^(.*?)(?:,|$)/);
-    return match ? match[1].trim() : input.trim();
+function cleanLaunchStatus(input) {
+    return cleanString(input); // No specific cleaning for launch status
 }
 
-// Helper function to calculate median of values
+function cleanBodyWeight(input) {
+    const match = input.match(/(\d+)\s*g/);
+    return match ? parseFloat(match[1]) : null;
+}
+
+function cleanBodySim(input) {
+    return input === 'No' || input === 'Yes' ? null : cleanString(input);
+}
+
+function cleanPlatformOS(input) {
+    return cleanString(input); // No specific cleaning for platform OS
+}
+
+function cleanDisplaySize(input) {
+    const match = input.match(/([\d.]+)\s*inches?/);
+    return match ? parseFloat(match[1]) : null;
+}
+
 function calculateMedian(values) {
-    const sorted = values.sort((a, b) => a - b);
+    const sorted = values.slice().sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-// Helper function to calculate standard deviation of values
 function calculateStandardDeviation(values) {
     const mean = values.reduce((acc, curr) => acc + curr, 0) / values.length;
     const variance = values.reduce((acc, curr) => acc + (curr - mean) ** 2, 0) / values.length;
     return Math.sqrt(variance);
 }
 
-// Array to store cell objects
 const cellList = [];
 
 async function main() {
-    const csvFile = 'cells.csv';
-
-    const fileStream = fs.createReadStream(csvFile);
-    const rl = readline.createInterface({
-        input: fileStream,
-        crlfDelay: Infinity
-    });
-
-    let id = 1;
-
-    rl.on('line', (line) => {
-        if (id === 1) {
-            id++;
-            return; // Skip the headers
-        }
-
-        const data = line.split(',(?=(?:[^"]*"[^"]*")*[^"]*$)', -1);
-
-        const cell = new Cell();
-        cell.setOEM(data[0]);
-        cell.setModel(data[1]);
-        cell.setLaunchAnnounced(data[2]);
-        cell.setLaunchStatus(data[3]);
-        cell.setBodyDimensions(data[4]);
-        cell.setBodyWeight(data[5]);
-        cell.setBodySim(data[6]);
-        cell.setDisplayType(data[7]);
-        cell.setDisplaySize(data[8]);
-        cell.setDisplayResolution(data[9]);
-        cell.setFeaturesSensors(data[10]);
-        cell.setPlatformOS(data[11]);
-
-        cellList.push(cell);
-    });
-
-    rl.on('close', () => {
-        // After reading CSV file
-        console.log(cellList);
-
-        // Example usage of Cell class methods
-        console.log(cellList[0].toString());
-        console.log(cellList[0].calculateStatistics());
-        console.log(cellList[0].listUniqueValues());
-
-        // Add new object
-        Cell.addObject({
-            oem: 'Samsung',
-            model: 'Galaxy S20',
-            launchAnnounced: '2020',
-            launchStatus: 'Discontinued',
-            bodyDimensions: '151.7 x 69.1 x 7.9 mm',
-            bodyWeight: '163 g',
-            bodySim: 'Yes',
-            displayType: 'Dynamic AMOLED',
-            displaySize: '6.2 inches',
-            displayResolution: '1440 x 3200 pixels',
-            featuresSensors: 'Fingerprint (under display, ultrasonic), accelerometer, gyro, proximity, compass, barometer',
-            platformOS: 'Android 10, upgradable to Android 11'
+    try {
+        const csvFile = 'cells.csv';
+        const fileStream = fs.createReadStream(csvFile);
+        const rl = readline.createInterface({
+            input: fileStream,
+            crlfDelay: Infinity
         });
 
-        console.log(cellList);
+        let id = 1;
 
-        // Delete an object
-        Cell.deleteObject(1);
-        console.log(cellList);
-    });
+        rl.on('line', (line) => {
+            if (id === 1) {
+                id++;
+                return; // Skip the headers
+            }
+
+            const data = line.split(',');
+            const cell = new Cell();
+
+            try {
+                cell.setOEM(data[0]);
+                cell.setModel(data[1]);
+                cell.setLaunchAnnounced(data[2]);
+                cell.setLaunchStatus(data[3]);
+                cell.setBodyDimensions(data[4]);
+                cell.setBodyWeight(data[5]);
+                cell.setBodySim(data[6]);
+                cell.setDisplayType(data[7]);
+                cell.setDisplaySize(data[8]);
+                cell.setDisplayResolution(data[9]);
+                cell.setFeaturesSensors(data[10]);
+                cell.setPlatformOS(data[11]);
+
+                cellList.push(cell);
+            } catch (err) {
+                console.error('Error processing line:', err.message);
+            }
+        });
+
+        rl.on('close', () => {
+            if (cellList.length > 0) {
+                console.log('CSV file processed successfully.');
+
+                // Answering the questions
+
+                // What company (oem) has the highest average weight of the phone body?
+                const avgWeightByOEM = {};
+                for (const cell of cellList) {
+                    if (cell.bodyWeight !== null) {
+                        if (!avgWeightByOEM[cell.oem]) {
+                            avgWeightByOEM[cell.oem] = [];
+                        }
+                        avgWeightByOEM[cell.oem].push(cell.bodyWeight);
+                    }
+                }
+                let maxAvgWeight = 0;
+                let oemWithMaxAvgWeight = null;
+                for (const oem in avgWeightByOEM) {
+                    const weights = avgWeightByOEM[oem];
+                    const avgWeight = weights.reduce((sum, weight) => sum + weight, 0) / weights.length;
+                    if (avgWeight > maxAvgWeight) {
+                        maxAvgWeight = avgWeight;
+                        oemWithMaxAvgWeight = oem;
+                    }
+                }
+                console.log(`Company with the highest average weight: ${oemWithMaxAvgWeight}`);
+
+                // Was there any phones that were announced in one year and released in another? What are they?
+                const phonesWithDifferentAnnounceAndReleaseYears = cellList.filter(cell => cell.launchAnnounced !== null && cell.launchStatus !== null && cell.launchAnnounced !== cell.launchStatus);
+                if (phonesWithDifferentAnnounceAndReleaseYears.length > 0) {
+                    console.log('Phones announced in one year and released in another:');
+                    phonesWithDifferentAnnounceAndReleaseYears.forEach(cell => {
+                        console.log(`OEM: ${cell.oem}, Model: ${cell.model}, Announced: ${cell.launchAnnounced}, Released: ${cell.launchStatus}`);
+                    });
+                } else {
+                    console.log('No phones were announced in one year and released in another.');
+                }
+
+                // How many phones have only one feature sensor?
+                const phonesWithOneFeatureSensor = cellList.filter(cell => cell.featuresSensors !== null && cell.featuresSensors.split(',').length === 1);
+                console.log(`Phones with only one feature sensor: ${phonesWithOneFeatureSensor.length}`);
+
+                // What year had the most phones launched in any year later than 1999?
+                const launchCountsByYear = {};
+                cellList.forEach(cell => {
+                    if (cell.launchAnnounced !== null && cell.launchAnnounced > 1999) {
+                        if (!launchCountsByYear[cell.launchAnnounced]) {
+                            launchCountsByYear[cell.launchAnnounced] = 0;
+                        }
+                        launchCountsByYear[cell.launchAnnounced]++;
+                    }
+                });
+                let maxLaunchCount = 0;
+                let yearWithMaxLaunches = null;
+                for (const year in launchCountsByYear) {
+                    if (launchCountsByYear[year] > maxLaunchCount) {
+                        maxLaunchCount = launchCountsByYear[year];
+                        yearWithMaxLaunches = year;
+                    }
+                }
+                console.log(`Year with the most phones launched after 1999: ${yearWithMaxLaunches}`);
+            } else {
+                console.log('No cell data available.');
+            }
+        });
+    } catch (err) {
+        console.error('An error occurred during file processing:', err.message);
+    }
 }
 
-// Call the main function to start the process
 main().catch(err => console.error(err));
