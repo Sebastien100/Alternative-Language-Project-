@@ -180,8 +180,97 @@ function cleanPlatformOS(input) {
     return input.trim();
 }
 
-// Helper function to clean display size and convert to float
-function cleanDisplaySize(input) {
-    const match = input.match(/([\d.]+) inches/);
-    return match ? parseFloat(match[1]) : null;
+// Helper function to remove extra information (up to the first comma)
+function removeExtraInfo(input) {
+    const match = input.match(/^(.*?)(?:,|$)/);
+    return match ? match[1].trim() : input.trim();
 }
+
+// Helper function to calculate median of values
+function calculateMedian(values) {
+    const sorted = values.sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// Helper function to calculate standard deviation of values
+function calculateStandardDeviation(values) {
+    const mean = values.reduce((acc, curr) => acc + curr, 0) / values.length;
+    const variance = values.reduce((acc, curr) => acc + (curr - mean) ** 2, 0) / values.length;
+    return Math.sqrt(variance);
+}
+
+// Array to store cell objects
+const cellList = [];
+
+async function main() {
+    const csvFile = 'cells.csv';
+
+    const fileStream = fs.createReadStream(csvFile);
+    const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+
+    let id = 1;
+
+    rl.on('line', (line) => {
+        if (id === 1) {
+            id++;
+            return; // Skip the headers
+        }
+
+        const data = line.split(',(?=(?:[^"]*"[^"]*")*[^"]*$)', -1);
+
+        const cell = new Cell();
+        cell.setOEM(data[0]);
+        cell.setModel(data[1]);
+        cell.setLaunchAnnounced(data[2]);
+        cell.setLaunchStatus(data[3]);
+        cell.setBodyDimensions(data[4]);
+        cell.setBodyWeight(data[5]);
+        cell.setBodySim(data[6]);
+        cell.setDisplayType(data[7]);
+        cell.setDisplaySize(data[8]);
+        cell.setDisplayResolution(data[9]);
+        cell.setFeaturesSensors(data[10]);
+        cell.setPlatformOS(data[11]);
+
+        cellList.push(cell);
+    });
+
+    rl.on('close', () => {
+        // After reading CSV file
+        console.log(cellList);
+
+        // Example usage of Cell class methods
+        console.log(cellList[0].toString());
+        console.log(cellList[0].calculateStatistics());
+        console.log(cellList[0].listUniqueValues());
+
+        // Add new object
+        Cell.addObject({
+            oem: 'Samsung',
+            model: 'Galaxy S20',
+            launchAnnounced: '2020',
+            launchStatus: 'Discontinued',
+            bodyDimensions: '151.7 x 69.1 x 7.9 mm',
+            bodyWeight: '163 g',
+            bodySim: 'Yes',
+            displayType: 'Dynamic AMOLED',
+            displaySize: '6.2 inches',
+            displayResolution: '1440 x 3200 pixels',
+            featuresSensors: 'Fingerprint (under display, ultrasonic), accelerometer, gyro, proximity, compass, barometer',
+            platformOS: 'Android 10, upgradable to Android 11'
+        });
+
+        console.log(cellList);
+
+        // Delete an object
+        Cell.deleteObject(1);
+        console.log(cellList);
+    });
+}
+
+// Call the main function to start the process
+main().catch(err => console.error(err));
